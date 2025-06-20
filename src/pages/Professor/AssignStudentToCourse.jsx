@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 
@@ -7,34 +7,33 @@ const API_BASE = "http://localhost:5000";
 export default function AssignStudentToCourse() {
   const { professorCourseId } = useParams();
 
-  const [students, setStudents] = useState([]); // from DB
-  const [excelStudents, setExcelStudents] = useState([]); // from Excel file
+  const [students, setStudents] = useState([]); // من قاعدة البيانات
+  const [excelStudents, setExcelStudents] = useState([]); // من ملف Excel
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [assigningId, setAssigningId] = useState(null);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [showStudentsList, setShowStudentsList] = useState(false); // حالة إظهار/إخفاء القائمة
 
-  // Fetch all students on mount (from DB)
   useEffect(() => {
-    async function fetchStudents() {
-      setLoadingStudents(true);
-      setError(null);
-      try {
-        const res = await fetch(`${API_BASE}/api/Admin/Students`);
-        if (!res.ok) throw new Error("فشل في تحميل الطلاب");
-        const data = await res.json();
-        setStudents(data);
-      } catch (err) {
-        setError(err.message || "حدث خطأ");
-      } finally {
-        setLoadingStudents(false);
-      }
-    }
-
     fetchStudents();
   }, []);
 
-  // Assign a student to the professor course
+  async function fetchStudents() {
+    setLoadingStudents(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/Admin/Students`);
+      if (!res.ok) throw new Error("فشل في تحميل الطلاب");
+      const data = await res.json();
+      setStudents(data);
+    } catch (err) {
+      setError(err.message || "حدث خطأ");
+    } finally {
+      setLoadingStudents(false);
+    }
+  }
+
   async function assignStudent(userId) {
     setAssigningId(userId);
     setError(null);
@@ -62,7 +61,6 @@ export default function AssignStudentToCourse() {
     }
   }
 
-  // Handle Excel file upload and parsing
   function handleFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -74,30 +72,50 @@ export default function AssignStudentToCourse() {
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
 
-      // Parse as array of arrays to avoid wrong keys
       const rows = XLSX.utils.sheet_to_json(worksheet, {
         header: 1,
         defval: "",
       });
 
-      // Assuming first row is header row, skip it; otherwise remove slice(1)
       const dataRows = rows.slice(1);
 
       const mappedStudents = dataRows.map((row, index) => {
-        const id = row[0] || `excel-${index}`;
+        const userIdFromExcel = row[0] || `excel-${index}`;
         const idNumber = String(row[1] || "").trim();
-        const fullName = String(row[2] || "").trim();
+        const fullNameExcel = String(row[2] || "").trim();
+        const emailFromExcel = idNumber ? `${idNumber}@gmail.com` : "";
+
+        const foundInDB = students.find(
+          (dbStudent) =>
+            dbStudent.email.trim().toLowerCase() === emailFromExcel.toLowerCase()
+        );
+
+        if (foundInDB) {
+          return {
+            userId: foundInDB.userId,
+            fullName: fullNameExcel || foundInDB.fullName,
+            email: foundInDB.email,
+            userName: foundInDB.email,
+            emailConfirmed: foundInDB.emailConfirmed || false,
+            fromExcel: true,
+            existsInDB: true,
+          };
+        }
 
         return {
-          userId: id,
-          email: idNumber ? `${idNumber}@gmail.com` : "",
-          fullName,
+          userId: userIdFromExcel,
+          fullName: fullNameExcel,
+          email: emailFromExcel,
+          userName: emailFromExcel,
+          emailConfirmed: false,
           fromExcel: true,
+          existsInDB: false,
         };
       });
 
       setExcelStudents(mappedStudents);
     };
+
     reader.readAsArrayBuffer(file);
   }
 
@@ -107,7 +125,18 @@ export default function AssignStudentToCourse() {
         تسجيل طلاب في الكورس
       </h1>
 
-      {/* File upload for Excel */}
+      {/* <div className="mb-6 text-center">
+        <button
+          onClick={fetchStudents}
+          className="px-6 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          disabled={loadingStudents}
+        >
+          {loadingStudents
+            ? "جارٍ تحميل الطلاب..."
+            : "جلب الطلاب من قاعدة البيانات"}
+        </button>
+      </div> */}
+
       <div className="mb-6">
         <label className="block mb-2 font-semibold text-gray-700">
           رفع ملف Excel (.xlsx)
@@ -129,50 +158,61 @@ export default function AssignStudentToCourse() {
         </div>
       )}
 
-      {/* List of students from DB */}
+      {/* عنوان قابل للنقر لإظهار أو إخفاء قائمة الطلاب */}
       <section className="mb-10">
-        <h2 className="text-2xl font-semibold mb-4 text-indigo-600">
-          طلاب من قاعدة البيانات
+        <h2
+          onClick={() => setShowStudentsList(!showStudentsList)}
+          className="text-2xl font-semibold mb-4 text-indigo-600 cursor-pointer select-none hover:text-indigo-800"
+          role="button"
+          aria-expanded={showStudentsList}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              setShowStudentsList(!showStudentsList);
+            }
+          }}
+        >
+          طلاب من قاعدة البيانات {showStudentsList ? "▲" : "▼"}
         </h2>
-        {loadingStudents ? (
-          <p className="text-center text-gray-600 italic animate-pulse">
-            جاري تحميل الطلاب...
-          </p>
-        ) : students.length === 0 ? (
-          <p className="text-center text-gray-600 italic">
-            لا يوجد طلاب في قاعدة البيانات.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {students.map((student) => (
-              <li
-                key={student.userId}
-                className="flex justify-between items-center border border-gray-300 rounded p-3 hover:shadow-sm"
-              >
-                <div>
-                  <p className="font-semibold text-gray-800">
-                    {student.fullName}
-                  </p>
-                  <p className="text-gray-600 text-sm">{student.email}</p>
-                </div>
-                <button
-                  disabled={assigningId === student.userId}
-                  onClick={() => assignStudent(student.userId)}
-                  className={`px-4 py-2 rounded text-white ${
-                    assigningId === student.userId
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-indigo-600 hover:bg-indigo-700"
-                  }`}
-                >
-                  {assigningId === student.userId ? "جارٍ التسجيل..." : "تسجيل"}
-                </button>
-              </li>
-            ))}
-          </ul>
+
+        {showStudentsList && (
+          <>
+            {students.length === 0 && !loadingStudents ? (
+              <p className="text-center text-gray-600 italic">
+                لم يتم جلب أي طلاب بعد.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {students.map((student) => (
+                  <li
+                    key={student.userId}
+                    className="flex justify-between items-center border border-gray-300 rounded p-3 hover:shadow-sm"
+                  >
+                    <div>
+                      <p className="font-semibold text-gray-800">
+                        {student.fullName}
+                      </p>
+                      <p className="text-gray-600 text-sm">{student.email}</p>
+                    </div>
+                    <button
+                      disabled={assigningId === student.userId}
+                      onClick={() => assignStudent(student.userId)}
+                      className={`px-4 py-2 rounded text-white ${
+                        assigningId === student.userId
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-indigo-600 hover:bg-indigo-700"
+                      }`}
+                    >
+                      {assigningId === student.userId ? "جارٍ التسجيل..." : "تسجيل"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </section>
 
-      {/* List of students from Excel */}
       <section>
         <h2 className="text-2xl font-semibold mb-4 text-indigo-600">
           طلاب من ملف Excel
@@ -189,9 +229,7 @@ export default function AssignStudentToCourse() {
                 className="flex justify-between items-center border border-gray-300 rounded p-3 hover:shadow-sm"
               >
                 <div>
-                  <p className="font-semibold text-gray-800">
-                    {student.fullName}
-                  </p>
+                  <p className="font-semibold text-gray-800">{student.fullName}</p>
                   <p className="text-gray-600 text-sm">{student.email}</p>
                 </div>
                 <button
