@@ -16,6 +16,13 @@ import CreateCourse from "./pages/Admin/CreateCouse";
 import ListCourses from "./pages/Admin/ListCourses";
 import AssignCourse from "./pages/Admin/AssignCourse";
 import ProfessorCoursesView from "./pages/Admin/ProfessorCourses";
+import ProfessorCourses from "./pages/Professor/Main";
+import CourseDetails from "./pages/Professor/CourseDetails";
+import ProfessorCourseDetails from "./pages/Professor/CourseDetails";
+import AssignStudentToCourse from "./pages/Professor/AssignStudentToCourse";
+import AddAttendance from "./pages/Professor/AddAttendance";
+import StudentAttendanceSummary from "./pages/Professor/StudentAttendanceSummary";
+import AdminLogin from "./pages/AdminLogin";
 
 // Admin pages
 // import AdminDashboard from "./pages/Admin/AdminDashboard";
@@ -29,11 +36,31 @@ function App() {
       <Routes>
         {/* Public site */}
         <Route path="/" element={<Layout />}>
-          <Route path="login" element={<Login />} />
+          <Route path="" element={<Login />} />
+          <Route path="login/admin" element={<AdminLogin />} />
+
           <Route path="register" element={<Register />} />
           <Route path="student" element={<Student />} />
           <Route path="professor" element={<Professor />} />
+          <Route path="professor-course/:professorId" element={<ProfessorCourses />} />
+          <Route path="/courses/:courseId" element={<CourseDetails />} />
+          <Route
+            path="/professor-courses/:professorCourseId/students"
+            element={<ProfessorCourseDetails />}
+          />
+          <Route
+            path="/professor-courses/:professorCourseId/assign"
+            element={<AssignStudentToCourse />}
+          />
+          <Route
+            path="/professor-courses/:professorCourseId/attendance"
+            element={<AddAttendance />}
+          />
         </Route>
+        <Route
+          path="/student/:studentId/attendance"
+          element={<StudentAttendanceSummary />}
+        />
 
         {/* Admin site */}
         <Route path="/admin" element={<AdminLayout />}>
@@ -45,9 +72,8 @@ function App() {
           <Route path="create-course" element={<CreateCourse />} />
           <Route path="courses" element={<ListCourses />} />
           <Route path="assign-course" element={<AssignCourse />} />
-          {/* <Route path="professor-course" element={<ProfessorCoursesView />} /> */}
 
-          
+          {/* <Route path="professor-course" element={<ProfessorCoursesView />} /> */}
         </Route>
       </Routes>
     </Router>

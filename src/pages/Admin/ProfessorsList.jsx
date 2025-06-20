@@ -16,7 +16,7 @@ export default function ProfessorsList() {
   });
   const [updating, setUpdating] = useState(false);
 
-  // NEW: Selected professor's courses
+  // Selected professor's courses
   const [selectedProfessorId, setSelectedProfessorId] = useState(null);
   const [professorCourses, setProfessorCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
@@ -44,12 +44,22 @@ export default function ProfessorsList() {
 
   // Fetch courses for selected professor
   async function fetchCourses(professorId) {
+    if (selectedProfessorId === professorId) {
+      // Toggle off if already selected
+      setSelectedProfessorId(null);
+      setProfessorCourses([]);
+      return;
+    }
+
     setCoursesLoading(true);
     setCoursesError(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/Admin/professor/${professorId}/courses`);
-      if (!res.ok) throw new Error("Failed to fetch courses for professor");
+      const res = await fetch(
+        `http://localhost:5000/api/Admin/professor/${professorId}/professor-courses`
+      );
+      if (!res.ok) throw new Error("Failed to fetch professor courses");
       const data = await res.json();
+      console.log(data);
       setProfessorCourses(data);
       setSelectedProfessorId(professorId);
     } catch (err) {
@@ -63,8 +73,7 @@ export default function ProfessorsList() {
 
   // Delete professor
   async function handleDelete(userId) {
-    if (!window.confirm("Are you sure you want to delete this professor?"))
-      return;
+    if (!window.confirm("Are you sure you want to delete this professor?")) return;
 
     try {
       const res = await fetch(
@@ -76,14 +85,11 @@ export default function ProfessorsList() {
 
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(
-          `Failed to delete professor: ${res.status} - ${errorText}`
-        );
+        throw new Error(`Failed to delete professor: ${res.status} - ${errorText}`);
       }
 
       setProfessors((prev) => prev.filter((prof) => prof.userId !== userId));
 
-      // If deleted professor was selected, clear courses display
       if (userId === selectedProfessorId) {
         setSelectedProfessorId(null);
         setProfessorCourses([]);
@@ -120,26 +126,20 @@ export default function ProfessorsList() {
     setUpdating(true);
 
     try {
-      const res = await fetch(
-        "http://localhost:5000/api/Admin/update-professor",
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: editingProfessor.userId,
-            ...formData,
-          }),
-        }
-      );
+      const res = await fetch("http://localhost:5000/api/Admin/update-professor", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: editingProfessor.userId,
+          ...formData,
+        }),
+      });
 
       if (!res.ok) throw new Error("Failed to update professor");
 
-      // Update local state
       setProfessors((prev) =>
         prev.map((prof) =>
-          prof.userId === editingProfessor.userId
-            ? { userId: prof.userId, ...formData }
-            : prof
+          prof.userId === editingProfessor.userId ? { userId: prof.userId, ...formData } : prof
         )
       );
       setEditingProfessor(null);
@@ -237,9 +237,7 @@ export default function ProfessorsList() {
         <div className="mt-6">
           <h2 className="text-xl font-semibold mb-4">
             Courses of Professor:{" "}
-            {
-              professors.find((p) => p.userId === selectedProfessorId)?.fullName
-            }
+            {professors.find((p) => p.userId === selectedProfessorId)?.fullName}
           </h2>
 
           {coursesLoading && <p>Loading courses...</p>}
@@ -247,16 +245,28 @@ export default function ProfessorsList() {
 
           {!coursesLoading && !coursesError && (
             <ul className="list-disc pl-6">
-              {professorCourses.length === 0 ? (
-                <li>No courses assigned.</li>
-              ) : (
-                professorCourses.map((course) => (
-                  <li key={course.id || course.courseId}>
-                    {course.name || course.courseName} - {course.theoreticalHours}T / {course.practicalHours}P
-                  </li>
-                ))
-              )}
-            </ul>
+  {professorCourses.length === 0 ? (
+    <li>No courses assigned.</li>
+  ) : (
+    professorCourses.map((course) => {
+      // جهز أجزاء النص اللي راح تعرضها فقط إذا القيمة أكبر من صفر
+      const parts = [];
+      if (course.theoreticalN > 0) parts.push(`${course.theoreticalN}T`);
+      if (course.practicalN > 0) parts.push(`${course.practicalN}P`);
+
+      // اجمع أجزاء النص مع فاصلة أو شرطة مائلة لو فيه أكثر من جزء
+      const hoursDisplay = parts.join(" / ");
+
+      return (
+        <li key={course.professorCourseId || course.professorCourseId}>
+          {course.courseName}
+          {hoursDisplay ? ` - ${hoursDisplay}` : ""}
+        </li>
+      );
+    })
+  )}
+</ul>
+
           )}
         </div>
       )}

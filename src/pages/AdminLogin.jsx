@@ -1,12 +1,6 @@
 import React, { useState } from "react";
 
-const USER_TYPES = [
-  { value: "student", label: "طالب", iconClass: "icon-graduation" },
-  { value: "professor", label: "عضو هيئة تدريس", iconClass: "icon-user-tie" }
-];
-
-export default function Login() {
-  const [userType, setUserType] = useState("student");
+export default function AdminLogin() {
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -15,81 +9,70 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSwitch = (type) => {
-    setUserType(type);
-    setFormData({ email: "", password: "" });
-    setError(null);
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-  
+
     if (!formData.email || !formData.password) {
       setError("الرجاء إدخال البريد الإلكتروني وكلمة المرور");
       return;
     }
-  
+
     setLoading(true);
-  
+
     const payload = {
       email: formData.email,
       password: formData.password,
-      userType
+      userType: "admin"
     };
-  
+
     try {
       const response = await fetch("http://localhost:5000/api/user/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-  
+
       const data = await response.json();
-  
+
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة");
         } else if (response.status === 403) {
-          throw new Error(
-            "هذا الحساب غير مصرح له بالدخول كـ " +
-            (userType === "student" ? "طالب" : "عضو هيئة تدريس")
-          );
+          throw new Error("هذا الحساب غير مصرح له بالدخول كمسؤول");
         } else {
           throw new Error(data.message || "حدث خطأ أثناء محاولة تسجيل الدخول");
         }
       }
-  
+
+      const role = data.user.role.toLowerCase();
+
+      if (role !== "admin") {
+        throw new Error("هذا النظام مخصص للمسؤولين فقط");
+      }
+
+      // Save auth data
       localStorage.setItem("token", data.token);
       localStorage.setItem("userType", data.user.role);
       localStorage.setItem("userData", JSON.stringify(data.user));
-  
-      const role = data.user.role.toLowerCase();
-  
-      if (role === "professor") {
-        window.location.href = `/professor-course/${data.user.id}`;
-      } else if (role === "student") {
-        window.location.href = `http://localhost:5173/student/${data.user.id}/attendance`;
-      } else {
-        window.location.href = "/";
-      }
-      
+
+      // Redirect to admin dashboard
+      window.location.href = "/admin";
+
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
-  
-
-
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-50 flex flex-col items-center justify-center p-4"
       dir="rtl"
       lang="ar"
@@ -98,27 +81,9 @@ export default function Login() {
       <div className="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-center">
-          <h1 className="text-2xl font-bold text-white">تسجيل الدخول</h1>
-          <p className="text-indigo-100 mt-1">سجل الدخول للوصول إلى حسابك</p>
+          <h1 className="text-2xl font-bold text-white">تسجيل دخول المسؤول</h1>
+          <p className="text-indigo-100 mt-1">فقط للمسؤولين</p>
         </div>
-
-        {/* User Type Switch */}
-        <nav className="flex border-b border-gray-200" aria-label="Tabs">
-          {USER_TYPES.map(({ value, label, iconClass }) => (
-            <button
-              key={value}
-              onClick={() => handleSwitch(value)}
-              className={`flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm flex items-center justify-center gap-2 ${
-                userType === value
-                  ? "border-indigo-500 text-indigo-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              <i className={iconClass}></i>
-              {label}
-            </button>
-          ))}
-        </nav>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -194,15 +159,7 @@ export default function Login() {
 
         {/* Footer */}
         <div className="bg-gray-50 px-6 py-4 text-center border-t border-gray-200">
-          <div className="flex flex-col space-y-2">
-
-            {/* <p className="text-xs text-gray-600">
-              ليس لديك حساب؟{" "}
-              <a href="/register" className="text-indigo-600 hover:text-indigo-800 font-medium">
-                إنشاء حساب جديد
-              </a>
-            </p> */}
-          </div>
+          <p className="text-xs text-gray-500">هذا النظام مخصص للمسؤولين فقط</p>
         </div>
       </div>
     </div>
