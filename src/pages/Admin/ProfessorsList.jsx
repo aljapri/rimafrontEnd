@@ -84,7 +84,7 @@ export default function ProfessorsList() {
 
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(`Failed to delete professor: ${res.status} - ${errorText}`);
+        throw new Error(`الدكتور مسجل في كورس `);
       }
 
       setProfessors((prev) => prev.filter((prof) => prof.userId !== userId));

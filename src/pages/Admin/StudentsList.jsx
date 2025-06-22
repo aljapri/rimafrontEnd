@@ -38,7 +38,6 @@ export default function StudentsList() {
   // Delete student
   async function handleDelete(userId) {
     if (!window.confirm("Are you sure you want to delete this student?")) return;
-
     try {
       const res = await fetch(`http://localhost:5000/api/Admin/delete-student/${userId}`, {
         method: "DELETE",
@@ -46,7 +45,7 @@ export default function StudentsList() {
 
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(`Failed to delete student: ${res.status} - ${errorText}`);
+        throw new Error(`المستخدم مسجل في كورس `);
       }
 
       setStudents((prev) => prev.filter((stu) => stu.userId !== userId));
