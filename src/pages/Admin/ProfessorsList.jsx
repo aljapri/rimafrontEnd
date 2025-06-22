@@ -59,7 +59,6 @@ export default function ProfessorsList() {
       );
       if (!res.ok) throw new Error("Failed to fetch professor courses");
       const data = await res.json();
-      console.log(data);
       setProfessorCourses(data);
       setSelectedProfessorId(professorId);
     } catch (err) {
@@ -245,28 +244,26 @@ export default function ProfessorsList() {
 
           {!coursesLoading && !coursesError && (
             <ul className="list-disc pl-6">
-  {professorCourses.length === 0 ? (
-    <li>No courses assigned.</li>
-  ) : (
-    professorCourses.map((course) => {
-      // جهز أجزاء النص اللي راح تعرضها فقط إذا القيمة أكبر من صفر
-      const parts = [];
-      if (course.theoreticalN > 0) parts.push(`${course.theoreticalN}T`);
-      if (course.practicalN > 0) parts.push(`${course.practicalN}P`);
+              {professorCourses.length === 0 ? (
+                <li>لا توجد مقررات معتمدة.</li>
+              ) : (
+                professorCourses.map((course) => {
+                  // Show فئة for theoretical and زمرة for practical hours if > 0
+                  const parts = [];
+                  if (course.theoreticalN > 0) parts.push(`فئة: ${course.theoreticalN}`);
+                  if (course.practicalN > 0) parts.push(`زمرة: ${course.practicalN}`);
 
-      // اجمع أجزاء النص مع فاصلة أو شرطة مائلة لو فيه أكثر من جزء
-      const hoursDisplay = parts.join(" / ");
+                  const hoursDisplay = parts.join(" / ");
 
-      return (
-        <li key={course.professorCourseId || course.professorCourseId}>
-          {course.courseName}
-          {hoursDisplay ? ` - ${hoursDisplay}` : ""}
-        </li>
-      );
-    })
-  )}
-</ul>
-
+                  return (
+                    <li key={course.professorCourseId || course.professorCourseId}>
+                      {course.courseName}
+                      {hoursDisplay ? ` - ${hoursDisplay}` : ""}
+                    </li>
+                  );
+                })
+              )}
+            </ul>
           )}
         </div>
       )}

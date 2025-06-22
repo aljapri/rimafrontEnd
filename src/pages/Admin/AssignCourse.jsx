@@ -3,9 +3,13 @@ import React, { useEffect, useState } from "react";
 export default function AssignCourse() {
   const [courses, setCourses] = useState([]);
   const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const [selectedCourse, setSelectedCourse] = useState(null);
   const [professors, setProfessors] = useState([]);
   const [message, setMessage] = useState("");
-  const [assignmentType, setAssignmentType] = useState({ practical: false, theoretical: false });
+  const [assignmentType, setAssignmentType] = useState({
+    practical: false,
+    theoretical: false,
+  });
   const [practicalN, setPracticalN] = useState(0);
   const [theoreticalN, setTheoreticalN] = useState(0);
 
@@ -29,8 +33,29 @@ export default function AssignCourse() {
     }
   };
 
+  const handleCourseChange = (e) => {
+    const courseId = e.target.value;
+    setSelectedCourseId(courseId);
+
+    const course = courses.find((c) => c.id.toString() === courseId);
+    setSelectedCourse(course);
+
+    // Reset selection
+    if (course) {
+      const canPractical = course.practicalHours > 0;
+      const canTheoretical = course.theoreticalHours > 0;
+
+      setAssignmentType({
+        practical: canPractical && !canTheoretical,
+        theoretical: canTheoretical && !canPractical,
+      });
+
+      setPracticalN(0);
+      setTheoreticalN(0);
+    }
+  };
+
   const handleAssign = async (professorId) => {
-    // Validation
     if (!assignmentType.practical && !assignmentType.theoretical) {
       setMessage("يرجى تحديد نوع التكليف: عملي أو نظري.");
       return;
@@ -45,20 +70,23 @@ export default function AssignCourse() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/Admin/assign-professor-to-course", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          professorId,
-          courseId: selectedCourseId,
-          practical: assignmentType.practical,
-          theoretical: assignmentType.theoretical,
-          practicalN: assignmentType.practical ? practicalN : 0,
-          theoreticalN: assignmentType.theoretical ? theoreticalN : 0,
-        }),
-      });
+      const res = await fetch(
+        "http://localhost:5000/api/Admin/assign-professor-to-course",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            professorId,
+            courseId: selectedCourseId,
+            practical: assignmentType.practical,
+            theoretical: assignmentType.theoretical,
+            practicalN: assignmentType.practical ? practicalN : 0,
+            theoreticalN: assignmentType.theoretical ? theoreticalN : 0,
+          }),
+        }
+      );
 
       if (res.ok) {
         setMessage("تم تعيين الأستاذ للمقرر بنجاح.");
@@ -66,7 +94,6 @@ export default function AssignCourse() {
         const err = await res.text();
         setMessage("حدث خطأ: " + err);
       }
-    // eslint-disable-next-line no-unused-vars
     } catch (error) {
       setMessage("فشل الاتصال بالخادم.");
     }
@@ -77,13 +104,15 @@ export default function AssignCourse() {
   }, []);
 
   useEffect(() => {
-    if (selectedCourseId) {
-      fetchProfessors();
-    }
+    if (selectedCourseId) fetchProfessors();
   }, [selectedCourseId]);
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white shadow rounded" dir="rtl" lang="ar">
+    <div
+      className="max-w-4xl mx-auto p-6 bg-white shadow rounded"
+      dir="rtl"
+      lang="ar"
+    >
       <h2 className="text-2xl font-bold mb-6">تعيين أستاذ لمقرر</h2>
 
       <div className="mb-6">
@@ -91,56 +120,88 @@ export default function AssignCourse() {
         <select
           className="w-full border px-3 py-2 rounded"
           value={selectedCourseId || ""}
-          onChange={(e) => setSelectedCourseId(e.target.value)}
+          onChange={handleCourseChange}
         >
           <option value="">-- اختر المقرر --</option>
-          {courses.map((course) => (
-            <option key={course.id} value={course.id}>
-              {course.name} ({course.theoreticalHours} نظري / {course.practicalHours} عملي)
-            </option>
-          ))}
+          {courses.map((course) => {
+            const parts = [];
+            if (course.theoreticalHours > 0)
+              parts.push(`${course.theoreticalHours} نظري`);
+            if (course.practicalHours > 0)
+              parts.push(`${course.practicalHours} عملي`);
+            return (
+              <option key={course.id} value={course.id}>
+                {course.name} ({parts.join(" / ")})
+              </option>
+            );
+          })}
         </select>
       </div>
 
-      <div className="mb-6">
-        <label className="block font-medium mb-2">نوع التكليف</label>
-        <div className="flex gap-4 mb-3">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={assignmentType.practical}
-              onChange={(e) => setAssignmentType({ ...assignmentType, practical: e.target.checked })}
-            /> عملي
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={assignmentType.theoretical}
-              onChange={(e) => setAssignmentType({ ...assignmentType, theoretical: e.target.checked })}
-            /> نظري
-          </label>
+      {selectedCourse && (
+        <div className="mb-6">
+          <label className="block font-medium mb-2">نوع التكليف</label>
+          <div className="flex gap-4 mb-3">
+            {selectedCourse.practicalHours > 0 && (
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={assignmentType.practical}
+                  onChange={(e) =>
+                    setAssignmentType({
+                      ...assignmentType,
+                      practical: e.target.checked,
+                    })
+                  }
+                />{" "}
+                عملي
+              </label>
+            )}
+
+            {selectedCourse.theoreticalHours > 0 && (
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={assignmentType.theoretical}
+                  onChange={(e) =>
+                    setAssignmentType({
+                      ...assignmentType,
+                      theoretical: e.target.checked,
+                    })
+                  }
+                />{" "}
+                نظري
+              </label>
+            )}
+          </div>
+
+          {assignmentType.practical && (
+            <div className="mb-2">
+              <label className="block mb-1 font-medium">زمرة</label>
+              <input
+                type="number"
+                className="border px-3 py-1 rounded w-full"
+                placeholder="عدد الحصص العملية"
+                value={practicalN}
+                onChange={(e) => setPracticalN(Number(e.target.value))}
+              />
+            </div>
+          )}
+
+          {assignmentType.theoretical && (
+            <div className="mb-2">
+              <label className="block mb-1 font-medium">فئة</label>
+              <input
+                type="number"
+                className="border px-3 py-1 rounded w-full"
+                placeholder="عدد الحصص النظرية"
+                value={theoreticalN}
+                onChange={(e) => setTheoreticalN(Number(e.target.value))}
+              />
+            </div>
+          )}
         </div>
-
-        {assignmentType.practical && (
-          <input
-            type="number"
-            className="border px-3 py-1 rounded mb-2 w-full"
-            placeholder="عدد الحصص العملية"
-            value={practicalN}
-            onChange={(e) => setPracticalN(Number(e.target.value))}
-          />
-        )}
-
-        {assignmentType.theoretical && (
-          <input
-            type="number"
-            className="border px-3 py-1 rounded w-full"
-            placeholder="عدد الحصص النظرية"
-            value={theoreticalN}
-            onChange={(e) => setTheoreticalN(Number(e.target.value))}
-          />
-        )}
-      </div>
+      )}
 
       {selectedCourseId && (
         <div>
@@ -167,7 +228,17 @@ export default function AssignCourse() {
         </div>
       )}
 
-      {message && <p className="mt-4 text-red-600 font-semibold">{message}</p>}
+      {message && (
+        <p
+          className={`mt-4 font-semibold ${
+            message.includes("نجاح") || message.includes("تم")
+              ? "text-green-600"
+              : "text-red-600"
+          }`}
+        >
+          {message}
+        </p>
+      )}
     </div>
   );
 }

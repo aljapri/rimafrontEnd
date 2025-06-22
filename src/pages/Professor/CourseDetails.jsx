@@ -14,9 +14,23 @@ export default function ProfessorCourseDetails() {
   const [successMsg, setSuccessMsg] = useState(null);
 
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [attendanceStatus, setAttendanceStatus] = useState([]);
+  const [absenceViolators, setAbsenceViolators] = useState([]);
+  const [hasForbidden, setHasForbidden] = useState(false);
 
-  const [hasForbidden, setHasForbidden] = useState(false); // 🔴 NEW STATE
+  const [courseId, setCourseId] = useState(null);
+
+  async function fetchCourseId() {
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/Professor/professor-course/${professorCourseId}`
+      );
+      if (!res.ok) throw new Error("فشل في جلب بيانات الكورس");
+      const data = await res.json();
+      setCourseId(data.courseId);
+    } catch (err) {
+      console.warn("خطأ في جلب courseId:", err.message);
+    }
+  }
 
   async function fetchStudents() {
     setLoading(true);
@@ -35,23 +49,23 @@ export default function ProfessorCourseDetails() {
     }
   }
 
-  useEffect(() => {
-    if (!professorCourseId) return;
-    fetchStudents();
-    checkForbiddenStatus(); // 🟠 Check once on load
-  }, [professorCourseId]);
-
-  async function checkForbiddenStatus() {
+  async function loadAbsenceViolators() {
+    if (!courseId) {
+      setError("لم يتم تحميل بيانات الكورس بعد.");
+      return;
+    }
+    setError(null);
     try {
       const res = await fetch(
-        `${API_BASE}/api/Professor/professor-course/${professorCourseId}/students-attendance`
+        `${API_BASE}/api/Professor/course/${courseId}/absence-violators`
       );
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("فشل في تحميل بيانات الغياب");
       const data = await res.json();
-      const hasAnyForbidden = data.some((s) => s.status === "ممنوع من التقديم");
-      setHasForbidden(hasAnyForbidden); // 🔴 Set forbidden state
+      setAbsenceViolators(data);
+      const forbiddenExists = data.some((s) => s.status === "محروم");
+      setHasForbidden(forbiddenExists);
     } catch (err) {
-      console.warn("خطأ في جلب بيانات التنبيهات:", err.message);
+      setError(err.message || "حدث خطأ أثناء تحميل التنبيهات");
     }
   }
 
@@ -75,18 +89,23 @@ export default function ProfessorCourseDetails() {
     }
   }
 
-  async function loadNotifications() {
-    try {
-      const res = await fetch(
-        `${API_BASE}/api/Professor/professor-course/${professorCourseId}/students-attendance`
-      );
-      if (!res.ok) throw new Error("فشل تحميل الغياب");
-      const data = await res.json();
-      setAttendanceStatus(data);
-      setNotificationsOpen(true);
-    } catch (err) {
-      alert("حدث خطأ أثناء تحميل التنبيهات");
+  useEffect(() => {
+    if (!professorCourseId) return;
+    fetchCourseId();
+    fetchStudents();
+  }, [professorCourseId]);
+
+  useEffect(() => {
+    if (courseId) {
+      loadAbsenceViolators();
     }
+  }, [courseId]);
+
+  function toggleNotifications() {
+    if (!notificationsOpen) {
+      loadAbsenceViolators();
+    }
+    setNotificationsOpen((open) => !open);
   }
 
   return (
@@ -96,17 +115,17 @@ export default function ProfessorCourseDetails() {
           الطلاب المسجلون في الكورس
         </h1>
 
-        {/* 🔔 Notification Button with Red Badge */}
         <div className="relative">
           <button
             className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold"
-            onClick={loadNotifications}
+            onClick={toggleNotifications}
+            disabled={!courseId}
+            title={!courseId ? "جارٍ تحميل بيانات الكورس..." : ""}
           >
             <FaBell />
             عرض التنبيهات
           </button>
 
-          {/* 🔴 Badge for Forbidden */}
           {hasForbidden && (
             <span className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 bg-red-600 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center shadow">
               !
@@ -115,66 +134,100 @@ export default function ProfessorCourseDetails() {
         </div>
       </div>
 
+      {/* التنبيهات - قائمة الطلاب المخالفين */}
       {notificationsOpen && (
-        <div className="bg-gray-100 p-4 rounded-xl shadow-inner mb-6">
-          <h2 className="text-xl font-semibold mb-2 text-indigo-700">
-            حالة الغياب حسب عدد الغيابات:
+        <div className="bg-gray-100 p-4 rounded-xl shadow-inner mb-6 max-h-96 overflow-y-auto">
+          <h2 className="text-xl font-semibold mb-4 text-indigo-700">
+            قائمة الطلاب المخالفين لحضور الكورس
           </h2>
-          <ul className="space-y-2">
-            {attendanceStatus
-              .filter(
-                (s) =>
-                  s.status === "تحذير: وصلت للحد المسموح" ||
-                  s.status === "ممنوع من التقديم"
-              )
-              .map((s, i) => (
-                <li
-                  key={s.studentId || i}
-                  className="text-gray-800 flex items-center justify-between"
-                >
-                  <div>
-                    <span className="font-bold">{s.fullName}</span>:{" "}
-                    <span className="font-semibold">
-                      {s.absenceCount} غياب / الحد الأقصى {s.maxAllowed}
-                    </span>{" "}
-                    -{" "}
-                    {s.status === "تحذير: وصلت للحد المسموح" ? (
-                      <span className="text-yellow-600 font-bold">
-                        ⚠️ {s.status}
-                      </span>
-                    ) : (
-                      <span className="text-red-600 font-bold">
-                        ⛔ {s.status}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    className="ml-4 px-3 py-1 text-sm bg-red-500 hover:bg-red-600 text-white rounded"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch(
-                          `${API_BASE}/api/Professor/attendance/delete-latest?studentId=${s.studentId}&professorCourseId=${professorCourseId}`,
-                          { method: "DELETE" }
-                        );
-                        if (!res.ok) throw new Error("فشل حذف الغياب");
-                        loadNotifications();
-                        alert("تم حذف آخر غياب بنجاح.");
-                      } catch (err) {
-                        alert("حدث خطأ عند حذف الغياب");
-                      }
-                    }}
+          {error && <p className="text-red-600">{error}</p>}
+          {absenceViolators.length === 0 && !error && (
+            <p className="text-gray-600 text-center">
+              لا يوجد طلاب مخالفين للغياب.
+            </p>
+          )}
+
+          <ul className="space-y-4">
+            {absenceViolators.map((s) => (
+              <li
+                key={s.studentId}
+                className="bg-white border border-gray-300 rounded p-4 flex flex-col gap-2"
+              >
+                <div className="flex justify-between items-center">
+                  <strong className="text-lg">{s.fullName}</strong>
+                  <span
+                    className={`font-bold ${
+                      s.status === "محروم"
+                        ? "text-red-600"
+                        : s.status === "تحذير"
+                        ? "text-yellow-600"
+                        : "text-green-600"
+                    }`}
                   >
-                    حذف آخر غياب
-                  </button>
-                </li>
-              ))}
+                    {s.status}
+                  </span>
+                </div>
+
+                <div>
+                  <p>عدد الغيابات العملي: <strong>{s.practicalAbsenceCount}</strong></p>
+                  <p>عدد الغيابات النظري: <strong>{s.theoreticalAbsenceCount}</strong></p>
+                  <p>إجمالي عدد الغيابات: <strong>{s.totalAbsencesCount}</strong></p>
+                </div>
+
+                <div>
+                  <p>نسبة الغياب العملي: <strong>{s.practicalAbsencePercentage}</strong></p>
+                  <p>نسبة الغياب النظري: <strong>{s.theoreticalAbsencePercentage}</strong></p>
+                  <p>النسبة الكلية للغياب: <strong>{s.totalAbsencePercentage}</strong></p>
+                </div>
+
+                <div>
+
+                  <p>الحد المسموح للغياب الكلي: <strong>{s.allowedTotalPercentage}</strong></p>
+                </div>
+
+                <div>
+                  <p>تفاصيل الغيابات في المواد:</p>
+                  <ul className="list-disc list-inside">
+                    {s.courses.map((c, idx) => (
+                      <li key={idx}>{c}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* زر حذف آخر غياب */}
+                <button
+                  className="ml-auto mt-2 px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded"
+                  onClick={async () => {
+                    setError(null);
+                    setSuccessMsg(null);
+                    try {
+                      const res = await fetch(
+                        `${API_BASE}/api/Professor/attendance/delete-latest?studentId=${s.studentId}&professorCourseId=${professorCourseId}`,
+                        { method: "DELETE" }
+                      );
+                      if (!res.ok) throw new Error("فشل حذف الغياب");
+                      await loadAbsenceViolators();
+                      setSuccessMsg("تم حذف آخر غياب بنجاح.");
+                    } catch (err) {
+                      setError("حدث خطأ عند حذف الغياب");
+                    }
+                  }}
+                >
+                  حذف آخر غياب
+                </button>
+              </li>
+            ))}
           </ul>
         </div>
       )}
 
-      {error && <div className="text-red-600 mb-4">{error}</div>}
+      {/* رسائل الخطأ والنجاح */}
+      {error && !notificationsOpen && (
+        <div className="text-red-600 mb-4">{error}</div>
+      )}
       {successMsg && <div className="text-green-600 mb-4">{successMsg}</div>}
 
+      {/* جدول الطلاب المسجلين */}
       {loading ? (
         <p className="text-gray-500 italic animate-pulse">
           جارٍ تحميل الطلاب...
@@ -213,9 +266,7 @@ export default function ProfessorCourseDetails() {
                           : "bg-red-600 hover:bg-red-700"
                       }`}
                     >
-                      {removingId === student.studentId
-                        ? "جارٍ الحذف..."
-                        : "حذف"}
+                      {removingId === student.studentId ? "جارٍ الحذف..." : "حذف"}
                     </button>
                   </td>
                 </tr>
