@@ -24,6 +24,7 @@ export default function StudentsList() {
       if (!res.ok) throw new Error("Failed to fetch students");
       const data = await res.json();
       setStudents(data);
+
     } catch (err) {
       setError(err.message || "Unknown error");
     } finally {

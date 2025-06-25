@@ -149,8 +149,8 @@ export default function AssignCourse() {
                   checked={assignmentType.practical}
                   onChange={(e) =>
                     setAssignmentType({
-                      ...assignmentType,
                       practical: e.target.checked,
+                      theoretical: false,
                     })
                   }
                 />{" "}
@@ -165,8 +165,8 @@ export default function AssignCourse() {
                   checked={assignmentType.theoretical}
                   onChange={(e) =>
                     setAssignmentType({
-                      ...assignmentType,
                       theoretical: e.target.checked,
+                      practical: false,
                     })
                   }
                 />{" "}

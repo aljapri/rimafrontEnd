@@ -74,9 +74,9 @@ export default function ListCourses() {
               <th className="border p-2 text-left">Name</th>
               <th className="border p-2">Practical</th>
               <th className="border p-2">Theoretical</th>
-              <th className="border p-2">Max Absence (P)</th>
-              <th className="border p-2">Max Absence (T)</th>
-              <th className="border p-2">Full Attendance</th>
+              <th className="border p-2">Absence Rate (P)</th>
+              <th className="border p-2">Absence Rate (T)</th>
+              <th className="border p-2">Permissible percentage of absence              </th>
               <th className="border p-2">Actions</th>
             </tr>
           </thead>

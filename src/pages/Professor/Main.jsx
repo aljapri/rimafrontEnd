@@ -1,22 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { FaBook, FaClock } from "react-icons/fa";
 
-const DEMO_PROFESSOR_ID = "49e43b40-cc99-4f27-efa4-08ddafd34a0a";
 
 export default function ProfessorCourses() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-
+  const {professorId} = useParams();
+  
   useEffect(() => {
     async function fetchCourses() {
       setLoading(true);
       setError(null);
       try {
         const res = await fetch(
-          `http://localhost:5000/api/Admin/professor/${DEMO_PROFESSOR_ID}/professor-courses`
+          `http://localhost:5000/api/Admin/professor/${professorId}/professor-courses`
         );
         if (!res.ok) throw new Error("Failed to fetch courses");
         const data = await res.json();
@@ -95,7 +95,7 @@ export default function ProfessorCourses() {
                       <button
                         onClick={() =>
                           navigate(
-                            `/professor-courses/${course.professorCourseId}/students`
+                            `/professor-courses/${course.professorCourseId}/students?type=${course.theoreticalN > 0? "Theory" :"Practical"}`
                           )
                         }
                         className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl transition duration-300"

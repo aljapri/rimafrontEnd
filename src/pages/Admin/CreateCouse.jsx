@@ -100,7 +100,7 @@ export default function CreateCourse() {
               className="w-full p-2 border rounded mb-4"
             />
 
-            <label className="block mb-2 font-semibold">Max Absence Limit (Practical)</label>
+            <label className="block mb-2 font-semibold">Practical absence rate            </label>
             <input
               type="number"
               name="maxAbsenceLimitPractical"
@@ -122,7 +122,7 @@ export default function CreateCourse() {
               className="w-full p-2 border rounded mb-4"
             />
 
-            <label className="block mb-2 font-semibold">Max Absence Limit (Theoretical)</label>
+            <label className="block mb-2 font-semibold"> theoretical absence rate  </label>
             <input
               type="number"
               name="maxAbsenceLimitTheoretical"
@@ -133,16 +133,16 @@ export default function CreateCourse() {
           </>
         )}
 
-        <label className="block mb-2 font-semibold">Max Total Absence Limit</label>
+        {/* <label className="block mb-2 font-semibold">Max Total Absence Limit</label>
         <input
           type="number"
           name="maxAbsenceLimit"
           value={form.maxAbsenceLimit}
           onChange={handleChange}
           className="w-full p-2 border rounded mb-4"
-        />
+        /> */}
 
-        <label className="block mb-2 font-semibold">Full Attendance (as a number)</label>
+        <label className="block mb-2 font-semibold">Permissible percentage of absence        </label>
         <input
           type="number"
           name="fullAttendance"

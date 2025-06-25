@@ -27,6 +27,8 @@ export default function AddAttendance() {
 
   const handleAttendanceClick = (studentId, isPresent) => {
     setAttending((prev) => ({ ...prev, [studentId]: isPresent }));
+    // Clear message when changing attendance status
+    setMessages((prev) => ({ ...prev, [studentId]: "" }));
   };
 
   const handleSubmit = async (studentId) => {
@@ -48,11 +50,17 @@ export default function AddAttendance() {
           professorCourseId,
           isPresent,
           notes: "",
-          sessionDate: date,
+          sessionDate: date
         }),
       });
 
-      if (!res.ok) throw new Error("فشل في إرسال الحضور");
+      if (!res.ok) {
+        // Check if the error is due to duplicate attendance
+        if (res.status === 409 ) {
+          throw new Error("هذا الطالب مسجل حضوره لهذا التاريخ بالفعل");
+        }
+        throw new Error("");
+      }
 
       setMessages((prev) => ({
         ...prev,
@@ -61,7 +69,7 @@ export default function AddAttendance() {
     } catch (err) {
       setMessages((prev) => ({
         ...prev,
-        [studentId]: "حدث خطأ أثناء الإرسال.",
+        [studentId]: err.message || "حدث خطأ أثناء الإرسال.",
       }));
     }
   };
@@ -77,7 +85,11 @@ export default function AddAttendance() {
         <input
           type="date"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={(e) => {
+            setDate(e.target.value);
+            // Clear all messages when date changes
+            setMessages({});
+          }}
           className="border border-gray-300 rounded px-4 py-2"
         />
       </div>
@@ -126,12 +138,15 @@ export default function AddAttendance() {
                   <button
                     onClick={() => handleSubmit(student.studentId)}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1 px-3 rounded"
+                    disabled={attending[student.studentId] === undefined}
                   >
                     تسجيل
                   </button>
                 </td>
-                <td className="px-4 py-2 text-sm text-gray-600">
-                  {messages[student.studentId]}
+                <td className="px-4 py-2 text-sm">
+                  <span className={`${messages[student.studentId]?.includes("نجاح") ? "text-green-600" : "text-red-600"}`}>
+                    {messages[student.studentId]}
+                  </span>
                 </td>
               </tr>
             ))}
